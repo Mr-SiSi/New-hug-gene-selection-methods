@@ -1,0 +1,16 @@
+#linux system
+#索引建立以及mapping使用BWA软件
+#索引建立：
+bwa index /mnt/hgfs/Y/hg38.fa
+#mapping：
+bwa mem -t 6 /mnt/hgfs/Y/hg38.fa /mnt/hgfs/Z/SRR123581##.1_1_val_1.fq /mnt/hgfs/Z/SRR123581##.1_2_val_2.fq > mem-pe.sam
+
+#sam格式使用samtools转译为bam格式，并将对bam文件建立索引
+samtools view -S /mnt/hgfs/Z/mem-pe88.sam -b > mem-pe88.bam  #文件格式转换
+samtools sort mem-pe88.bam -o seq_sorted88.bam  ##将bam文件排序
+samtools index seq_sorted88.bam  #对排序后对bam文件索引生成bai格式文件，用于快速随机处理。
+#使用samtools flagstate进行质量控制，导出结果
+samtools flagstate seq_sorted88.bam > seq_sorted88.flagstate
+
+#将新的bam文件导入IGV软件，观察对比情况
+#file repeat......

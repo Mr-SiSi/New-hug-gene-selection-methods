@@ -1,0 +1,7 @@
+The average size of the original file is 70G, and it will reach 8 times the size after decompression, that is, about 560G. Therefore, computing each file will consume a lot of resources.
+In all the codes, due to the repetitive part involved, that is, it can be calculated again by modifying the file number, so not all the details for each file are listed. All code defaults to the form of path + file name, so it will not be explained in subsequent steps.
+
+IMPORTANT！！！！！！！！！
+step1 run using cmd command in windows environment
+step2-4 is running in the terminal in the Linux environment (I am using the ubuntu 18.04 system, in order to avoid some installation package problems, it is recommended to use this system)
+step5 is run for R language

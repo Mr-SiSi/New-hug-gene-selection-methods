@@ -1,0 +1,13 @@
+#Windows系统：
+#SRA文件转译——转成fastq格式
+sratoolkit工具包下载，不再赘述
+使用工具包路径中fastq-dump.exe工具进行sra格式（后缀为sra或.1）解压，文件位于cmd命令运行位置
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358188.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358189.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358190.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358191.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358192.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358193.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358194.1
+Z:\sratoolkit.2.11.0-win64\bin\fastq-dump.exe --split-e Z:\trans-data2\SRR12358195.1
+repeat......

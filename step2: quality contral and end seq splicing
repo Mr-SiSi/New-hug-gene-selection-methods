@@ -1,0 +1,10 @@
+#Linux系统：
+
+#fastqc质控(可视化软件，无需进行code操作)
+
+#End sequence splicing
+#trim_galore双端去index+质控
+trim_galore -q 20 --phred33 --stringency 3 --length 20 -e 0.1             --paired /mnt/hgfs/Y/trans-data/SRR12358192.1_1.fastq /mnt/hgfs/Y/trans-data/SRR12358192.1_2.fastq -o /mnt/hgfs/Z
+
+根据路径重复进行样本的splicing......
+

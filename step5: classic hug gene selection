@@ -1,0 +1,142 @@
+#环境导入
+library(DESeq2)
+library(ggplot2)
+
+## 数据预处理
+sampleNames <- c("n1", "n2", "n3", "d1", "d2", "d3" , "d4" , "d5" , "d6" , "d7" , "d8")
+# 第一行是命令信息，所以跳过install.package(“ggplot2”)
+data <- read.table("featureCounts.txt", header=TRUE, quote="\t", skip=1)
+# 前六列分别是Geneid	Chr	Start	End	Strand	Length
+# 我们要的是count数，所以从第七列开始
+names(data)[7:17] <- sampleNames
+countData <- as.matrix(data[7:17])
+rownames(countData) <- data$Geneid
+database <- data.frame(name=sampleNames, condition=c("Normal", "Normal", "Normal", "Disease", "Disease", "Disease", "Disease", "Disease", "Disease", "Disease", "Disease"))
+rownames(database) <- sampleNames
+
+## 设置分组信息并构建dds对象
+dds <- DESeqDataSetFromMatrix(countData, colData=database, design= ~ condition)
+dds <- dds[ rowSums(counts(dds)) > 1, ]
+
+"使用DESeq函数估计离散度，然后差异分析(DEseq策略)获得res对象"
+dds <- DESeq(dds)
+res <- results(dds)
+write.csv(res, "res_des_output.csv")
+resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE)),by="row.names",sort=FALSE)
+write.csv(resdata, "all_des_output.csv", row.names=FALSE)
+
+"使用edgeR策略进行差异分析，取和DEseq策略的交集"
+library(edgeR)
+##跟DESeq2一样，导入数据，预处理（用了cpm函数）
+#读取基因表达矩阵
+targets <- read.delim('allcounts.txt', row.names = 1, sep = '\t', check.names = FALSE)
+
+#指定分组，注意要保证表达矩阵中的样本顺序和这里的分组顺序是一一对应的
+#对照组在前，处理组在后
+group <- rep(c('normal', 'normal','normal','disease','disease','disease','disease','disease','disease','disease','disease'))
+#数据预处理
+#（1）构建 DGEList 对象
+dgelist <- DGEList(counts = targets, group = group)
+
+#（2）过滤 low count 数据，例如 CPM 标准化（推荐,常用）
+keep <- rowSums(cpm(dgelist) > 1 ) >= 2
+dgelist <- dgelist[keep, , keep.lib.sizes = FALSE]
+
+#（3）TMM 标准化
+dgelist_norm <- calcNormFactors(dgelist, method = 'TMM')
+
+#差异表达基因分析
+#首先根据分组信息构建试验设计矩阵，分组信息中一定要是对照组在前，处理组在后
+design <- model.matrix(~group)
+
+#（1）估算基因表达值的离散度
+dge <- estimateDisp(dgelist_norm, design, robust = TRUE)
+
+#（2）模型拟合，edgeR 提供了多种拟合算法(下方两个算法二选一)
+#负二项广义对数线性模型（推荐，常用）
+fit <- glmFit(dge, design, robust = TRUE)
+lrt <- topTags(glmLRT(fit), n = nrow(dgelist$counts))
+
+write.table(lrt, 'edgeR_diff_genes.txt', sep = '\t', col.names = NA, quote = FALSE)
+
+#拟似然负二项广义对数线性模型
+fit <- glmQLFit(dge, design, robust = TRUE)
+lrt <- topTags(glmQLFTest(fit), n = nrow(dgelist$counts))
+
+write.table(lrt, 'diff_genes.txt', sep = '\t', col.names = NA, quote = FALSE)
+
+##筛选差异表达基因
+#读取上述输出的差异倍数计算结果
+gene_diff <- read.delim('diff_genes.txt', row.names = 1, sep = '\t', check.names = FALSE)
+
+#首先对表格排个序，按 FDR 值升序排序，相同 FDR 值下继续按 log2FC 降序排序
+gene_diff <- gene_diff[order(gene_diff$FDR, gene_diff$logFC, decreasing = c(FALSE, TRUE)), ]
+
+#log2FC≥1 & FDR<0.01 标识 up，代表显著上调的基因
+#log2FC≤-1 & FDR<0.01 标识 down，代表显著下调的基因
+#其余标识 none，代表非差异的基因
+gene_diff[which(gene_diff$logFC >= 1 & gene_diff$FDR < 0.01),'sig'] <- 'up'
+gene_diff[which(gene_diff$logFC <= -1 & gene_diff$FDR < 0.01),'sig'] <- 'down'
+gene_diff[which(abs(gene_diff$logFC) <= 1 | gene_diff$FDR >= 0.01),'sig'] <- 'none'
+
+#输出选择的差异基因总表
+gene_diff_select <- subset(gene_diff, sig %in% c('up', 'down'))
+write.table(gene_diff_select, file = 'diff_genes.txt', sep = '\t', col.names = NA, quote = FALSE)
+
+#根据 up 和 down 分开输出
+gene_diff_up <- subset(gene_diff, sig == 'up')
+gene_diff_down <- subset(gene_diff, sig == 'down')
+
+write.table(gene_diff_up, file = 'diff_genes.up.txt', sep = '\t', col.names = NA, quote = FALSE)
+write.table(gene_diff_down, file = 'diff_genes.down.txt', sep = '\t', col.names = NA, quote = FALSE)
+
+##取交集
+diff_gene <- diff_gene_DESeq2[diff_gene_DESeq2 %in% diff_gene_edgeR]
+
+#火山图
+
+# 这里的resdata也可以用res_des_output.csv这个结果重新导入。
+# 现在就是用的前面做DESeq的时候的resdata。
+resdata$change <- as.factor(
+	ifelse(
+		resdata$padj<0.01 & abs(resdata$log2FoldChange)>1,
+		ifelse(resdata$log2FoldChange>1, "Up", "Down"),
+		"NoDiff"
+	)
+)
+valcano <- ggplot(data=resdata, aes(x=log2FoldChange, y=-log10(padj), color=change)) + 
+	geom_point(alpha=0.8, size=1) + 
+	theme_bw(base_size=15) + 
+	theme(
+		panel.grid.minor=element_blank(),
+		panel.grid.major=element_blank()
+	) + 
+	ggtitle("DESeq2 Valcano") + 
+	scale_color_manual(name="", values=c("red", "green", "black"), limits=c("Up", "Down", "NoDiff")) + 
+	geom_vline(xintercept=c(-1, 1), lty=2, col="gray", lwd=0.5) + 
+	geom_hline(yintercept=-log10(0.01), lty=2, col="gray", lwd=0.5)
+
+valcano
+
+#主成分分析（PCA）
+
+rld <- rlog(dds)
+pcaData <- plotPCA(rld, intgroup=c("condition", "name"), returnData=T)
+percentVar <- round(100*attr(pcaData, "percentVar"))
+pca <- ggplot(pcaData, aes(PC1, PC2, color=condition, shape=name)) + 
+	geom_point(size=3) + 
+	ggtitle("DESeq2 PCA") + 
+	xlab(paste0("PC1: ", percentVar[1], "% variance")) + 
+	ylab(paste0("PC2: ", percentVar[2], "% variance"))
+pca
+
+#热图
+library(pheatmap)
+
+select <- order(rowMeans(counts(dds, normalized=T)), decreasing=T)[1:1000]
+nt <- normTransform(dds)
+log2.norm.counts <- assay(nt)[select,]
+df <- as.data.frame(colData(dds)[, c("name", "condition")])
+pheatmap(log2.norm.counts, cluster_rows=T, show_rownames=F, cluster_cols=T, annotation_col=df, fontsize=6)
+
+#之后进行GO以及KEEP分析，生成PPI网络，寻找hub基因

@@ -1,0 +1,15 @@
+#featurecounts提取(使用subread软件中的featurecounts工具)
+#参考基因组为hg38.ncbiRefSeq.gtf
+wget https://jaist.dl.sourceforge.net/project/subread/subread-2.0.2/subread-2.0.2-Linux-x86_64.tar.gz
+
+tar -zxvf subread-2.0.2-Linux-x86_64.tar.gz
+
+cd subread-2.0.2-Linux-x86_64
+
+cd bin
+
+ls
+sudo apt install subread
+featureCounts -T 30 -p -t exon -g gene_id -a /mnt/hgfs/Y/hg38.ncbiRefSeq.gtf -o /mnt/hgfs/Z/featureCounts88.txt /mnt/hgfs/Z/seq_sorted88.bam
+#（以上使用的是meta-feature进行基因的定量分析）
+#file repeat......
